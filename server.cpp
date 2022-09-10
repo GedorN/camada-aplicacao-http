@@ -20,6 +20,8 @@
 #include <functional>
 #include <unordered_map>
 #include <algorithm>
+#include <boost/json.hpp>
+#include <boost/json/src.hpp>
 #include <fstream>
 #include "Platform.hpp"
 
@@ -87,19 +89,6 @@ class RequestHandler {
         for (int i = 1; i < tokens.size(); i++) {
             std::vector<std::string> header_tokens;
             header_tokens = split(tokens[i], ':');
-            // if (header_tokens.size() == 1) {
-            //     // TODO! O body está vindo sem \n, porque na linha 73,
-            //     // substituimos todos os \r\n por VAZIO. Então se vier um
-            //     texto
-            //     // multilinha, não vai funcionar.
-            //     for (int j = i; j < tokens.size(); j++) {
-            //         body += tokens[j] + "\r\n";
-            //     }
-            //     break;
-            // }
-            // boost::split_regex(header_tokens, tokens[i],
-            // boost::regex("^.+?(?=\:)"));
-
             if (header_tokens.size() != 2) continue;
             boost::trim(header_tokens[0]);
             boost::trim(header_tokens[1]);
@@ -115,12 +104,14 @@ class RequestHandler {
         if (method == "GET") {
             handle_get_request();
         } else if (method == "POST") {
-            handle_post_request();
+            boost::json::value response_value = handle_post_request();
+            std::string serialized_json =
+                boost::json::serialize(response_value);
+            std::string request_response =
+                "HTTP/1.1 200 OK\r\n\r\n" + serialized_json;
+            send_(socket_, request_response);
         }
-
-        // send_(socket_, "HTTP/1.1 200 OK\r\n\r\nTESTE: " +
-        //                    std::to_string(request_counter));
-        // request_counter++;
+        request_counter++;
         socket_.close();
     }
 
@@ -180,9 +171,35 @@ class RequestHandler {
         }
     }
 
-    void handle_post_request() {
-        // std::string path = tokens[index+=2];
-        // std::cout << "POST" << path << std::endl;
+    boost::json::value handle_post_request() {
+        // Ué, to aqui ainda
+        boost::json::parse_options opts;
+        opts.allow_comments = true;
+        opts.allow_invalid_utf8 = false;
+        opts.allow_trailing_commas = true;
+        auto doc = boost::json::parse(body);
+        // std::cout << doc.at("ola") << std::endl;
+
+        for (auto &value : doc.as_object()) {
+            value.value() = value.value().as_string().c_str() +
+                            std::string(" - Dado processado.");
+            // auto json_v = value.value().as_string();
+            // std::cout << json_v << std::endl;
+            // std::cout << typeid(value.value().get_allocator()).name() <<
+            // std::endl; std::cout <<
+            // typeid(value.value().storage().get()).name() << std::endl;
+            // std::cout << value.value().kind() << std::endl;
+            // std::string z{"s"};
+            // std::any a = z;
+            // auto x = decltype(a)::type;
+            // auto s = static_cast<decltype(a)>(a);
+
+            std::cout << value.value() << std::endl;
+            // value.get(0) = json_v[0] + "xablau";
+            // std::cout << value.key() << " " << json_v[0] << std::endl;
+        }
+        std::cout << doc << std::endl;
+        return doc;
     }
 };
 
