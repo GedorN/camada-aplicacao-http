@@ -11,13 +11,16 @@ if(WIN32 OR MSVC)
 endif()
 
 if(UNIX)
-    find_package(Boost REQUIRED COMPONENTS program_options regex)
-    target_link_libraries(redes pthread ${Boost_REGEX_LIBRARY})
+    find_package(Boost 1.80 REQUIRED COMPONENTS program_options regex json)
     set(PlatformCPP
         UnixPlatform.cpp
     )
 endif()
 
 add_executable(redes server.cpp Platform.cpp ${PlatformCPP})
+
+if(UNIX)
+    target_link_libraries(redes pthread ${Boost_LIBRARIES})
+endif()
 
 # target_link_libraries(redes pthread ${Boost_REGEX_LIBRARY})

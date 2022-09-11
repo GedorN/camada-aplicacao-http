@@ -130,7 +130,9 @@ class RequestHandler {
         std::string path = first_line[1];
         std::cout << "GET " << path << std::endl;
 
-        boost::replace_all(path, "/", "\\");
+        if (platform->get_platform_type() == PlatformType::Windows) {
+            boost::replace_all(path, "/", "\\");
+        }
 
         auto bin_path = platform->get_executable_path();
         COUT << "BIN PATH: " << bin_path << std::endl;
@@ -141,13 +143,24 @@ class RequestHandler {
             bin_path.erase(x.base(), bin_path.end());
         }
 
-        auto utf8_bin_path = platform->utf16_to_utf8(bin_path);
+        std::string utf8_bin_path;
+        if (platform->get_platform_type() == PlatformType::Windows) {
+            utf8_bin_path = platform->utf16_to_utf8(bin_path);
+        } else {
+            utf8_bin_path = platform->get_raw_string(bin_path);
+        }
+
         boost::trim(utf8_bin_path);
 
         COUT << "BIN PATH WITHOUT FILENAME: " << bin_path << std::endl;
 
-        std::string file_path =
-            std::format("{}{}{}", utf8_bin_path.data(), public_path, path);
+        std::string file_path;
+        file_path.append(utf8_bin_path.data());
+        if (platform->get_platform_type() == PlatformType::Unix) {
+            file_path.append("/");
+        }
+
+        file_path.append(public_path).append(path);
 
         std::cout << "FILE PATH: " << file_path << std::endl;
 
@@ -159,9 +172,10 @@ class RequestHandler {
                                 std::istreambuf_iterator<char>());
 
             std::cout << "RESPONSE CONTENT: " << content << std::endl;
-            std::string response = std::format(
-                "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{}",
-                content);
+            std::string response;
+            response
+                .append("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n")
+                .append(content);
             send_(socket_, response);
         } else {
             std::cout << "File Not Found" << std::endl;
@@ -208,7 +222,7 @@ int main() {
     boost::asio::io_service io_service;
     tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), 3005));
 
-    std::wcout << platform->get_executable_path() << std::endl;
+    COUT << platform->get_executable_path() << std::endl;
 
     while (true) {
         // Inicializar um novo socket a cada iteração
