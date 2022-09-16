@@ -24,7 +24,8 @@ enum class PlatformType { Windows, Unix, Mac, Unknown };
 
 class Platform {
    protected:
-    Platform(/* args */) = default;
+    Platform(/* args */);
+    ;
     inline static PlatformType type{};
 
    public:
@@ -32,10 +33,14 @@ class Platform {
     virtual STRINGTYPE get_executable_path(std::string path = {}) = 0;
     virtual std::string utf16_to_utf8(const STRINGTYPE &wstr) { return {}; }
     virtual std::wstring utf8_to_utf16(const std::string &wstr) { return {}; }
-    virtual std::string get_raw_string(const STRINGTYPE &str) {
-        return {reinterpret_cast<const char *>(str.c_str())};
+    virtual std::string get_platform_string(const STRINGTYPE &str) {
+        if (type == PlatformType::Windows) {
+            return utf16_to_utf8(str);
+        } else {
+            return {reinterpret_cast<const char *>(str.c_str())};
+        }
     }
-    static std::unique_ptr<Platform> create_platform();
+    static std::shared_ptr<Platform> create_platform();
     static PlatformType get_platform_type() { return type; }
 };
 

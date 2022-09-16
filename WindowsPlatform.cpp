@@ -5,7 +5,15 @@ STRINGTYPE WindowsPlatform::get_executable_path(std::string path) {
     auto module_name =
         GetModuleFileName(nullptr, path_buffer, _countof(path_buffer));
 
-    return {path_buffer};
+    std::wstring wbuffer{path_buffer};
+    auto last_slash = wbuffer.rfind(L"\\");
+    auto x = std::find(wbuffer.rbegin(), wbuffer.rend(), L'\\');
+
+    if (last_slash != std::string::npos) {
+        wbuffer = wbuffer.substr(0, last_slash);
+    }
+
+    return wbuffer;
 }
 
 std::string WindowsPlatform::utf16_to_utf8(const std::wstring &wstr) {
@@ -17,5 +25,6 @@ std::string WindowsPlatform::utf16_to_utf8(const std::wstring &wstr) {
         WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &str[0], size,
                             nullptr, nullptr);
     }
+
     return str;
 }

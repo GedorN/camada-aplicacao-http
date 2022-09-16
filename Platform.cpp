@@ -1,4 +1,5 @@
 #include "Platform.hpp"
+#include <iostream>
 
 #if defined(WINDOWS)
 #include "WindowsPlatform.hpp"
@@ -6,13 +7,15 @@
 #include "UnixPlatform.hpp"
 #endif
 
-std::unique_ptr<Platform> Platform::create_platform() {
+Platform::Platform(/* args */) { std::cout << "Platform Created" << std::endl; }
+
+std::shared_ptr<Platform> Platform::create_platform() {
 #if defined(WINDOWS)
     type = PlatformType::Windows;
-    return std::make_unique<WindowsPlatform>();
+    return std::make_shared<WindowsPlatform>();
 #elif defined(UNIX)
     type = PlatformType::Unix;
-    return std::make_unique<UnixPlatform>();
+    return std::make_shared<UnixPlatform>();
 #else
     return nullptr;
 #endif

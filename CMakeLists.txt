@@ -17,7 +17,7 @@ if(UNIX)
     )
 endif()
 
-add_executable(redes server.cpp Platform.cpp ${PlatformCPP})
+add_executable(redes server.cpp Platform.cpp ${PlatformCPP} RequestHandler.cpp)
 
 if(UNIX)
     target_link_libraries(redes pthread ${Boost_LIBRARIES})
