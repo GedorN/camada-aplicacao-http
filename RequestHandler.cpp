@@ -102,7 +102,7 @@ void RequestHandler::handle() {
         }
     }
 
-    if (request_data.method == "GET") {
+    if (request_data.method == "GET" || request_data.method == "HEAD") {
         handle_get_request();
     } else if (request_data.method == "POST") {
         boost::json::value response_value = handle_post_request();
@@ -128,6 +128,13 @@ void RequestHandler::send_(tcp::socket &socket, const std::string &message) {
 }
 
 void RequestHandler::handle_get_request() {
+    if(request_data.method == "HEAD") {
+        std::string response;
+        response.append("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
+        send_(socket_, response);
+        return;
+    }
+
     auto bin_path = platform->get_executable_path();
 
     std::string utf8_bin_path = platform->get_platform_string(bin_path);
@@ -143,7 +150,7 @@ void RequestHandler::handle_get_request() {
         std::string content((std::istreambuf_iterator<char>(file)),
                             std::istreambuf_iterator<char>());
         std::string response;
-        response.append("HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n")
+        response.append("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n")
             .append(content);
         send_(socket_, response);
     } else {
@@ -164,20 +171,8 @@ boost::json::value RequestHandler::handle_post_request() {
     for (auto &value : doc.as_object()) {
         value.value() = value.value().as_string().c_str() +
                         std::string(" - Dado processado.");
-        // auto json_v = value.value().as_string();
-        // std::cout << json_v << std::endl;
-        // std::cout << typeid(value.value().get_allocator()).name() <<
-        // std::endl; std::cout <<
-        // typeid(value.value().storage().get()).name() << std::endl;
-        // std::cout << value.value().kind() << std::endl;
-        // std::string z{"s"};
-        // std::any a = z;
-        // auto x = decltype(a)::type;
-        // auto s = static_cast<decltype(a)>(a);
 
         std::cout << value.value() << std::endl;
-        // value.get(0) = json_v[0] + "xablau";
-        // std::cout << value.key() << " " << json_v[0] << std::endl;
     }
     std::cout << doc << std::endl;
     return doc;
