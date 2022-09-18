@@ -33,7 +33,7 @@ class RequestHandler {
     std::vector<std::string> split_http_header(const std::string &s,
                                                char delimiter = ':');
     ~RequestHandler();
-    boost::json::value handle_post_request();
+    std::string handle_post_request();
     void handle_get_request();
     std::string read_(tcp::socket &socket);
     void send_(tcp::socket &socket, const std::string &message);

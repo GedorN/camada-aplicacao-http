@@ -105,8 +105,7 @@ void RequestHandler::handle() {
     if (request_data.method == "GET" || request_data.method == "HEAD") {
         handle_get_request();
     } else if (request_data.method == "POST") {
-        boost::json::value response_value = handle_post_request();
-        std::string serialized_json = boost::json::serialize(response_value);
+        std::string serialized_json = handle_post_request();
         std::string request_response =
             "HTTP/1.1 200 OK\r\n\r\n" + serialized_json;
         send_(socket_, request_response);
@@ -159,21 +158,31 @@ void RequestHandler::handle_get_request() {
     }
 }
 
-boost::json::value RequestHandler::handle_post_request() {
+std::string RequestHandler::handle_post_request() {
     // Ué, to aqui ainda
-    boost::json::parse_options opts;
-    opts.allow_comments = true;
-    opts.allow_invalid_utf8 = false;
-    opts.allow_trailing_commas = true;
-    auto doc = boost::json::parse(request_data.body);
-    // std::cout << doc.at("ola") << std::endl;
+    std::cout<<"TYPE " << request_data.headers["Content-Type"]<<std::endl;
+    std::string type = request_data.headers["Content-Type"];
+    if (type == "application/json") {
+        boost::json::parse_options opts;
+        opts.allow_comments = true;
+        opts.allow_invalid_utf8 = false;
+        opts.allow_trailing_commas = true;
+        auto doc = boost::json::parse(request_data.body);
 
-    for (auto &value : doc.as_object()) {
-        value.value() = value.value().as_string().c_str() +
-                        std::string(" - Dado processado.");
+        for (auto &value : doc.as_object()) {
+            value.value() = value.value().as_string().c_str() +
+                            std::string(" - Dado processado.");
 
-        std::cout << value.value() << std::endl;
+            std::cout << value.value() << std::endl;
+        }
+        std::cout << doc << std::endl;
+        std::string serialized_json = boost::json::serialize(doc);
+        return serialized_json;
+    } else if (type == "text/plain") {
+        std::cout << "Body: " << request_data.body << std::endl;
+        return request_data.body + std::string(" - Dado processado. ");
+
     }
-    std::cout << doc << std::endl;
-    return doc;
+
+    return "";
 }
