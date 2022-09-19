@@ -25,11 +25,12 @@ enum class PlatformType { Windows, Unix, Mac, Unknown };
 class Platform {
    protected:
     Platform(/* args */);
-    ;
     inline static PlatformType type{};
+    std::string bin_path{};
 
    public:
     virtual ~Platform() = default;
+    void setup();
     virtual STRINGTYPE get_executable_path(std::string path = {}) = 0;
     virtual std::string utf16_to_utf8(const STRINGTYPE &wstr) { return {}; }
     virtual std::wstring utf8_to_utf16(const std::string &wstr) { return {}; }
@@ -42,6 +43,7 @@ class Platform {
     }
     static std::shared_ptr<Platform> create_platform();
     static PlatformType get_platform_type() { return type; }
+    const std::string &get_bin_path() const { return bin_path; }
 };
 
 #endif  // PLATFORM_HPP

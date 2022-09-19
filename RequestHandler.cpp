@@ -24,7 +24,10 @@ std::vector<std::string> RequestHandler::split_http_header(const std::string &s,
     return tokens;
 }
 
-RequestHandler::~RequestHandler() { socket_.close(); }
+RequestHandler::~RequestHandler() {
+    socket_.close();
+    std::cout << "Socket Destroyed" << std::endl;
+}
 
 bool RequestHandler::accept_header(std::string &header) {
     for (auto &accepted_header : accepted_headers) {
@@ -80,6 +83,27 @@ void RequestHandler::bad_request() {
     send_(socket_, "HTTP/1.0 400 Bad Request\r\n\r\n");
 }
 
+void RequestHandler::not_found() {
+    std::string file_path{get_request_file_path("404.html")};
+    std::ifstream file(file_path, std::ios::binary);
+
+    auto response =
+        HttpResponse::create().set_status(HttpStatusCode::NOT_FOUND);
+    if (file.good() && file.is_open()) {
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+
+        response.set_body(content)
+            .set_header("Content-Type", get_file_mime_type(file_path))
+            .set_header("Content-Length", std::to_string(content.size()));
+    } else {
+        response.set_body("404 Not Found").set_header("Content-Length", "13");
+    }
+
+    // todo!  NOT FOUND. ESSA CHAMADA FUNCIONA, porém olhar TODO!(2)
+    send_(socket_, response.to_string());
+}
+
 RequestHandler::RequestHandler(tcp::socket socket,
                                const std::shared_ptr<Platform> platform)
     : socket_(std::move(socket)), public_path{"public"}, platform{platform} {
@@ -102,13 +126,19 @@ void RequestHandler::handle() {
         }
     }
 
-    if (request_data.method == "GET" || request_data.method == "HEAD") {
+    if (request_data.method == "GET") {
         handle_get_request();
     } else if (request_data.method == "POST") {
-        std::string serialized_json = handle_post_request();
-        std::string request_response =
-            "HTTP/1.1 200 OK\r\n\r\n" + serialized_json;
-        send_(socket_, request_response);
+        auto content = handle_post_request();
+        auto response = HttpResponse::create();
+        response.set_status(HttpStatusCode::OK)
+            .set_header("Content-Type", "application/json")
+            .set_header("Content-Length", std::to_string(content.size()))
+            .set_body(content);
+
+        send_(socket_, response.to_string());
+    } else if (request_data.method == "HEAD") {
+        handle_head_request();
     } else {
         bad_request();
     }
@@ -123,46 +153,141 @@ std::string RequestHandler::read_(tcp::socket &socket) {
 
 void RequestHandler::send_(tcp::socket &socket, const std::string &message) {
     const std::string msg = message + "\n";
-    boost::asio::write(socket, boost::asio::buffer(message));
+    boost::asio::write(socket, boost::asio::buffer(msg));
+}
+
+std::string RequestHandler::get_file_mime_type(std::string &file_path) {
+    std::string file_extension =
+        file_path.substr(file_path.find_last_of(".") + 1, file_path.size());
+    if (file_extension == "html") {
+        return "text/html";
+    } else if (file_extension == "css") {
+        return "text/css";
+    } else if (file_extension == "js") {
+        return "application/javascript";
+    } else if (file_extension == "png") {
+        return "image/png";
+    } else if (file_extension == "jpg") {
+        return "image/jpg";
+    } else if (file_extension == "jpeg") {
+        return "image/jpeg";
+    } else if (file_extension == "gif") {
+        return "image/gif";
+    } else if (file_extension == "svg") {
+        return "image/svg+xml";
+    } else if (file_extension == "ico") {
+        return "image/x-icon";
+    } else if (file_extension == "json") {
+        return "application/json";
+    } else if (file_extension == "xml") {
+        return "application/xml";
+    } else if (file_extension == "pdf") {
+        return "application/pdf";
+    } else if (file_extension == "zip") {
+        return "application/zip";
+    } else if (file_extension == "rar") {
+        return "application/x-rar-compressed";
+    } else if (file_extension == "gz") {
+        return "application/gzip";
+    } else if (file_extension == "txt") {
+        return "text/plain";
+    } else if (file_extension == "mp3") {
+        return "audio/mpeg";
+    } else if (file_extension == "wav") {
+        return "audio/x-wav";
+    } else if (file_extension == "mpeg") {
+        return "video/mpeg";
+    } else if (file_extension == "mpg") {
+        return "video/mpeg";
+    } else if (file_extension == "mpe") {
+        return "video/mpeg";
+    } else if (file_extension == "mov") {
+        return "video/quicktime";
+    } else if (file_extension == "avi") {
+        return "video/x-msvideo";
+    } else if (file_extension == "3gp") {
+        return "video/3gpp";
+    }
+
+    return "";
+}
+
+std::string RequestHandler::get_request_file_path(std::string file_name) {
+    if (file_name.empty()) {
+        file_name = request_data.path;
+    } else if (!file_name.starts_with("/")) {
+        file_name = "/" + file_name;
+    }
+
+    std::string file_path{platform->get_bin_path()};
+    file_path.append("/").append(public_path).append(file_name);
+
+    if (file_path.back() == '/') {
+        file_path.append("index.html");
+    }
+
+    return file_path;
+}
+
+void RequestHandler::handle_head_request() {
+    std::string file_path{get_request_file_path()};
+
+    auto response =
+        HttpResponse::create()
+            .set_status(HttpStatusCode::OK)
+            .set_header("Content-Type", get_file_mime_type(file_path));
+    send_(socket_, response.to_string());
+}
+
+std::string RequestHandler::get_request_mime_type() {
+    return this->request_data.headers["Content-Type"];
 }
 
 void RequestHandler::handle_get_request() {
-    if(request_data.method == "HEAD") {
-        std::string response;
-        response.append("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
-        send_(socket_, response);
-        return;
-    }
-
-    auto bin_path = platform->get_executable_path();
-
-    std::string utf8_bin_path = platform->get_platform_string(bin_path);
-    boost::trim(utf8_bin_path);
-    std::string file_path;
-    file_path.append(utf8_bin_path.data())
-        .append("/")
-        .append(public_path)
-        .append(request_data.path);
+    /* TODO!(2) - Na chamada no NOT FOUND, existe uma imagem no HTML, que volta
+    como um GET pra imagem da pasta public.*/
+    /*TODO!(2) - Essa imagem é retornada corretamente, porém, após o envio,
+    gera uma nova conexão que não é fechada. (Trava na função _read)*/
+    std::string file_path{get_request_file_path()};
     std::ifstream file(file_path, std::ios::binary);
 
     if (file.good() && file.is_open()) {
         std::string content((std::istreambuf_iterator<char>(file)),
                             std::istreambuf_iterator<char>());
-        std::string response;
-        response.append("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n")
-            .append(content);
-        send_(socket_, response);
+
+        auto request =
+            HttpResponse::create()
+                .set_status(HttpStatusCode::OK)
+                .set_header("Content-Type", get_file_mime_type(file_path))
+                .set_header("Content-Length", std::to_string(content.size()))
+                .set_body(content);
+
+        send_(socket_, request.to_string());
     } else {
-        std::cout << "File Not Found" << std::endl;
-        send_(socket_, "HTTP/1.1 404 Not Found\r\n\r\n");
+        file.close();
+        not_found();
     }
 }
 
 std::string RequestHandler::handle_post_request() {
-    // Ué, to aqui ainda
-    std::cout<<"TYPE " << request_data.headers["Content-Type"]<<std::endl;
-    std::string type = request_data.headers["Content-Type"];
-    if (type == "application/json") {
+    auto req_mime_type = get_request_mime_type();
+
+    if (req_mime_type == "application/json") {
+        if (platform->get_platform_type() == PlatformType::Windows) {
+            // TODO! NÃO FUNFA NO WINDOWS AINDA
+            auto processed_data =
+                request_data.body.append(" - Dado processado.");
+
+            return processed_data;
+            if (!request_data.body.starts_with("\"")) {
+                request_data.body = "\"" + request_data.body;
+            }
+
+            if (!request_data.body.ends_with("\"")) {
+                request_data.body = request_data.body + "\"";
+            }
+        }
+
         boost::json::parse_options opts;
         opts.allow_comments = true;
         opts.allow_invalid_utf8 = false;
@@ -178,11 +303,9 @@ std::string RequestHandler::handle_post_request() {
         std::cout << doc << std::endl;
         std::string serialized_json = boost::json::serialize(doc);
         return serialized_json;
-    } else if (type == "text/plain") {
-        std::cout << "Body: " << request_data.body << std::endl;
-        return request_data.body + std::string(" - Dado processado. ");
+    } else {
+        auto processed_data = request_data.body.append(" - Dado processado.");
 
+        return processed_data;
     }
-
-    return "";
 }

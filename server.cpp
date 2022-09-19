@@ -4,6 +4,7 @@
 
 int main() {
     const std::shared_ptr<Platform> platform = Platform::create_platform();
+    platform->setup();
 
     boost::asio::io_service io_service;
     tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), 3005));
@@ -11,16 +12,12 @@ int main() {
     while (true) {
         std::cout << "Platform shr_ptr count: " << platform.use_count()
                   << std::endl;
-        // Inicializar um novo socket a cada iteração
         tcp::socket socket_(io_service);
-        // acceptor usa o socket para receber uma request
         acceptor_.accept(socket_);
-        // cria um thread para lidar com a requisição
-        /*thread é passado como um movable pq ao final do escopo vai ser
-         *deletado, então precisa manter o lifetime dele*/
-        // Da um detach pra destruir dps que a função termina
-        auto future_result = std::async(
-            std::launch::async,
+
+        // Thread normal, pois o async usa threadpool. Precisamos de um novo
+        // contexto.
+        std::thread(
             [](tcp::socket socket_, const std::shared_ptr<Platform> platform) {
                 try {
                     RequestHandler handler(std::move(socket_), platform);
@@ -29,7 +26,8 @@ int main() {
                     std::cerr << e.what() << '\n';
                 }
             },
-            std::move(socket_), platform);
+            std::move(socket_), platform)
+            .detach();
 
         std::cout << "Platform shr_ptr count: " << platform.use_count()
                   << std::endl;

@@ -1,4 +1,5 @@
 #include "Platform.hpp"
+#include <boost/algorithm/string.hpp>
 #include <iostream>
 
 #if defined(WINDOWS)
@@ -7,7 +8,10 @@
 #include "UnixPlatform.hpp"
 #endif
 
-Platform::Platform(/* args */) { std::cout << "Platform Created" << std::endl; }
+Platform::Platform(/* args */) {
+    std::cout << "Platform Created for process: " << this->bin_path
+              << std::endl;
+}
 
 std::shared_ptr<Platform> Platform::create_platform() {
 #if defined(WINDOWS)
@@ -19,4 +23,11 @@ std::shared_ptr<Platform> Platform::create_platform() {
 #else
     return nullptr;
 #endif
+}
+
+void Platform::setup() {
+    auto bin_path = get_executable_path();
+    std::string utf8_bin_path = get_platform_string(bin_path);
+    boost::trim(utf8_bin_path);
+    this->bin_path = utf8_bin_path.data();
 }
