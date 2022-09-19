@@ -113,34 +113,48 @@ RequestHandler::RequestHandler(tcp::socket socket,
     accepted_headers.emplace_back("Host");
 }
 
+void RequestHandler::internal_error() {
+    std::string str{"500 Internal Server Error"};
+    auto response =
+        HttpResponse::create()
+            .set_status(HttpStatusCode::INTERNAL_SERVER_ERROR)
+            .set_body(str)
+            .set_header("Content-Length", std::to_string(str.size()));
+    send_(socket_, response.to_string());
+}
+
 void RequestHandler::handle() {
-    if (!process_request_metadata()) {
-        bad_request();
-        return;
-    }
-
-    for (const auto &token : tokens) {
-        auto header_data = split_http_header(token);
-        if (header_data.size() == 2 && accept_header(header_data.front())) {
-            request_data.headers[header_data.front()] = header_data.back();
+    try {
+        if (!process_request_metadata()) {
+            bad_request();
+            return;
         }
-    }
 
-    if (request_data.method == "GET") {
-        handle_get_request();
-    } else if (request_data.method == "POST") {
-        auto content = handle_post_request();
-        auto response = HttpResponse::create();
-        response.set_status(HttpStatusCode::OK)
-            .set_header("Content-Type", "application/json")
-            .set_header("Content-Length", std::to_string(content.size()))
-            .set_body(content);
+        for (const auto &token : tokens) {
+            auto header_data = split_http_header(token);
+            if (header_data.size() == 2 && accept_header(header_data.front())) {
+                request_data.headers[header_data.front()] = header_data.back();
+            }
+        }
 
-        send_(socket_, response.to_string());
-    } else if (request_data.method == "HEAD") {
-        handle_head_request();
-    } else {
-        bad_request();
+        if (request_data.method == "GET") {
+            handle_get_request();
+        } else if (request_data.method == "POST") {
+            auto content = handle_post_request();
+            auto response = HttpResponse::create();
+            response.set_status(HttpStatusCode::OK)
+                .set_header("Content-Type", "application/json")
+                .set_header("Content-Length", std::to_string(content.size()))
+                .set_body(content);
+
+            send_(socket_, response.to_string());
+        } else if (request_data.method == "HEAD") {
+            handle_head_request();
+        } else {
+            bad_request();
+        }
+    } catch (const std::exception &e) {
+        internal_error();
     }
 }
 

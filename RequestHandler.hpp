@@ -111,6 +111,7 @@ class RequestHandler {
     void handle();
     void bad_request();
     void not_found();
+    void internal_error();
     bool process_request_metadata();
     bool accept_header(std::string &header);
     void print_connection_info();
