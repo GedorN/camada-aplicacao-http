@@ -223,7 +223,7 @@ std::string RequestHandler::get_file_mime_type(std::string &file_path) {
         return "video/3gpp";
     }
 
-    return "";
+    return "application/octet-stream";
 }
 
 std::string RequestHandler::get_request_file_path(std::string file_name) {
