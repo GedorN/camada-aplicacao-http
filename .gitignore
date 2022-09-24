@@ -12,3 +12,4 @@ _deps
 build
 build_win
 build_linux
+.vs

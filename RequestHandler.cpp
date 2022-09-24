@@ -6,7 +6,9 @@
 #include <boost/algorithm/string/regex.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/read_until.hpp>
+#include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/asio/buffer.hpp>
 
 std::vector<std::string> RequestHandler::split_http_header(const std::string &s,
                                                            char delimiter) {
@@ -39,8 +41,6 @@ bool RequestHandler::accept_header(std::string &header) {
 }
 
 void RequestHandler::print_connection_info() {
-    std::cout << "Platform shr_ptr count: " << this->platform.use_count()
-              << std::endl;
     auto local_endpoint = this->socket_.local_endpoint();
     auto remote_endpoint = this->socket_.remote_endpoint();
     std::cout << "New connection from " << remote_endpoint.address().to_string()
@@ -159,10 +159,33 @@ void RequestHandler::handle() {
 }
 
 std::string RequestHandler::read_(tcp::socket &socket) {
-    boost::asio::streambuf buf;
-    boost::asio::read_until(socket, buf, "\n");
-    std::string data = boost::asio::buffer_cast<const char *>(buf.data());
-    return data;
+    std::string message;
+    std::stringstream message_stream;
+    boost::asio::streambuf buffer(socket.available());
+    boost::system::error_code error;
+    size_t len = read(socket, buffer, boost::asio::transfer_all(), error);
+    if (!error && len) {
+        message_stream.write(
+            boost::asio::buffer_cast<const char *>(buffer.data()), len);
+        message = message_stream.str();
+    } else {
+        boost::system::error_code ec;
+        std::string xx;
+        while (ec != boost::asio::error::eof) {
+            std::string message_stream;
+
+            size_t buffersize =
+                socket.read_some(boost::asio::buffer(message_stream, 1024), ec);
+
+            if (buffersize > 0) {
+                xx.append(message_stream);
+            } else {
+                break;
+            }
+        }
+        return xx;
+    }
+    return message;
 }
 
 void RequestHandler::send_(tcp::socket &socket, const std::string &message) {

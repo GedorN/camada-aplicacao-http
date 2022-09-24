@@ -67,13 +67,6 @@ struct HttpResponse {
         response.append(this->status);
         response.append("\r\n");
         for (auto &header : this->headers) {
-            if (header.first == "Content-Length") {
-                // Sempre enviamos um \n no final, então precisa aumentar o
-                // length.
-                header.second =
-                    std::to_string(std::atoi(header.second.c_str()) + 1);
-            }
-
             response.append(header.first);
             response.append(": ");
             response.append(header.second);
