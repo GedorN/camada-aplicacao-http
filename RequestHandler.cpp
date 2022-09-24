@@ -169,28 +169,19 @@ std::string RequestHandler::read_(tcp::socket &socket) {
             boost::asio::buffer_cast<const char *>(buffer.data()), len);
         message = message_stream.str();
     } else {
-        boost::system::error_code ec;
-        std::string xx;
-        while (ec != boost::asio::error::eof) {
-            std::string message_stream;
-
-            size_t buffersize =
-                socket.read_some(boost::asio::buffer(message_stream, 1024), ec);
-
-            if (buffersize > 0) {
-                xx.append(message_stream);
-            } else {
-                break;
-            }
-        }
-        return xx;
+        boost::asio::streambuf buf;
+        boost::asio::read_until(socket, buf, "\n");
+        std::string data = boost::asio::buffer_cast<const char *>(buf.data());
+        return data;
     }
     return message;
 }
 
 void RequestHandler::send_(tcp::socket &socket, const std::string &message) {
-    const std::string msg = message + "\n";
+    const std::string msg = message;
     boost::asio::write(socket, boost::asio::buffer(msg));
+    boost::system::error_code ec;
+    socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 }
 
 std::string RequestHandler::get_file_mime_type(std::string &file_path) {
