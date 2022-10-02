@@ -1,4 +1,4 @@
-# Impelemtação da camada de aplicação HTTP/1.1
+# Implementação da camada de aplicação HTTP/1.1
 
 Desenvolvido por Anderson Candido(andersoncjs96@gmail.com) e Gedor Neto(gedor.silvaneto@gmail.com)
 
