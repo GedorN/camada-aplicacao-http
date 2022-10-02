@@ -1,4 +1,12 @@
-## To build and run:
+# Impelemtação da camada de aplicação HTTP/1.1
+
+Desenvolvido por Anderson Candido(andersoncjs96@gmail.com) e Gedor Neto(gedor.silvaneto@gmail.com)
+
+Implementação da camada de aplicação do protocolo HTTP/1.1. Após aberto um socket com a camada de transporte (TCP),  cada requisição é tratada em uma thread separadamente.
+
+Possui suporte para requisição GET, POST com plain text e JSON e HEAD.
+
+## Para build e execução:
 ```bash
 $ mkdir build
 $ cd build
