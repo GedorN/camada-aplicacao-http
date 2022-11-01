@@ -4,7 +4,7 @@ Desenvolvido por Anderson Candido(andersoncjs96@gmail.com) e Gedor Neto(gedor.si
 
 Implementação da camada de aplicação do protocolo HTTP/1.1. Após aberto um socket com a camada de transporte (TCP),  cada requisição é tratada em uma thread separadamente.
 
-Possui suporte para requisição GET, POST com plain text e JSON e HEAD.
+Possui suporte para requisição GET, HEAD. POST com plain text e JSON.
 
 ## Para build e execução:
 ```bash
